@@ -1,8 +1,11 @@
 # claude-plugin
 
 A starter [Claude Code](https://code.claude.com/docs) plugin. It ships one of
-each major component type — a skill, an agent, and a hook — wired up and
+each major component type — skills, an agent, commands, and hooks — wired up and
 working, so you can see how the pieces fit and then replace them with your own.
+
+It also ships a validator, so the manifest mistakes that only surface at install
+time on someone else's machine fail here instead.
 
 ## Try it
 
@@ -24,12 +27,18 @@ Plugin skills are always namespaced with the plugin's `name`, which is why it's
 
 | Path | Component | What it does |
 | :--- | :--- | :--- |
-| `.claude-plugin/plugin.json` | Manifest | Name, version, and metadata. `name` is the only required field. |
+| `.claude-plugin/plugin.json` | Manifest | Name, version, and metadata. |
+| `.claude-plugin/PLUGIN_SCHEMA_NOTES.md` | Docs | Manifest rules that fail with unhelpful errors, and why. |
 | `skills/hello/` | Skill | Minimal `$ARGUMENTS` example. Delete it once you've read it. |
 | `skills/conventional-commit/` | Skill | Writes a Conventional Commits message for staged changes. |
+| `skills/plugin-authoring/` | Skill | Manifest shape, frontmatter, hook wiring, and install-failure triage. |
 | `agents/code-reviewer.md` | Agent | Read-only reviewer subagent, available as `@claude-plugin:code-reviewer`. |
-| `hooks/hooks.json` | Hook | Runs the script below after every `Write` or `Edit`. |
+| `commands/review.md` | Command | `/claude-plugin:review` — reviews uncommitted changes, reports only. |
+| `commands/new-component.md` | Command | `/claude-plugin:new-component` — scaffolds a component with valid frontmatter. |
+| `hooks/hooks.json` | Hooks | Conflict-marker check after edits; git-bypass block before Bash. |
 | `scripts/check-conflict-markers.sh` | Hook script | Flags leftover merge-conflict markers back to Claude. |
+| `scripts/hooks/block-no-verify.js` | Hook script | Blocks `--no-verify` and `core.hooksPath` overrides. |
+| `scripts/ci/validate-plugin.js` | Tooling | Validates manifest, frontmatter, and hook wiring. |
 
 ### Skills vs. agents vs. hooks
 
@@ -60,6 +69,9 @@ Plugin skills are always namespaced with the plugin's `name`, which is why it's
    Code falls back to the git commit SHA and treats every commit as a new
    version.
 
+Or run `/claude-plugin:new-component <agent|command|skill> <name>`, which
+scaffolds the file with frontmatter that passes the validator.
+
 ### Adding other component types
 
 Everything except `plugin.json` lives at the plugin root, never inside
@@ -82,26 +94,47 @@ it changes again on every update.
 
 ## Validate
 
+The official validator checks `plugin.json`, skill and agent frontmatter, and
+`hooks/hooks.json` for schema errors:
+
 ```bash
 claude plugin validate .
 ```
 
-This checks `plugin.json`, skill and agent frontmatter, and `hooks/hooks.json`
-for schema errors. Add `--strict` in CI to turn warnings — a typo'd field name,
-a leftover key from another tool's manifest — into failures.
+Add `--strict` in CI to turn warnings — a typo'd field name, a leftover key from
+another tool's manifest — into failures.
+
+This repo also ships its own checks, which run without the CLI and cover rules
+the schema alone does not express:
+
+```bash
+npm test          # validator + unit tests
+npm run validate  # manifest, frontmatter, and hook wiring only
+npm run test:unit # unit tests only
+```
+
+No dependencies — Node 18+ and its built-in test runner. Among other things it
+enforces that `commands` / `skills` / `hooks` are arrays rather than bare
+strings, that the manifest declares no `agents` field and does not re-declare
+`hooks/hooks.json` (both are loaded by convention, and declaring them breaks the
+install), that agent `tools` is a comma-separated scalar rather than a YAML
+array, that skill `description` is an inline scalar, that the two manifests stay
+in version sync, and that every script a hook references actually exists.
+
+Each rule and the failure it prevents is documented in
+[`.claude-plugin/PLUGIN_SCHEMA_NOTES.md`](.claude-plugin/PLUGIN_SCHEMA_NOTES.md).
 
 ## Distribute
 
-To let others install this with `/plugin marketplace add danuadp/Claude-plugin`,
-add `.claude-plugin/marketplace.json`:
+`.claude-plugin/marketplace.json` is already set up, so others can install this
+with:
 
-```json
-{
-  "name": "danuadp",
-  "owner": { "name": "danuadp" },
-  "plugins": [{ "source": "./", "name": "claude-plugin" }]
-}
+```bash
+/plugin marketplace add danuadp/Claude-plugin
 ```
+
+Keep its `version` in sync with `plugin.json` — the validator fails the build if
+they drift.
 
 Full details: [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
 
@@ -112,6 +145,12 @@ Full details: [plugin marketplaces](https://code.claude.com/docs/en/plugin-marke
 - [Skills](https://code.claude.com/docs/en/skills)
 - [Subagents](https://code.claude.com/docs/en/sub-agents)
 - [Hooks](https://code.claude.com/docs/en/hooks)
+
+## Credits
+
+`PLUGIN_SCHEMA_NOTES.md` and the validator's rule set are adapted from
+[affaan-m/ECC](https://github.com/affaan-m/ECC) (MIT), which catalogued these
+validator quirks the expensive way. The code here is original.
 
 ## License
 

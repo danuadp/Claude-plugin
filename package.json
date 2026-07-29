@@ -1,0 +1,26 @@
+{
+  "name": "claude-plugin",
+  "version": "0.1.0",
+  "description": "A starter Claude Code plugin - agents, commands, skills, and hooks with a validator that enforces the manifest rules the CLI actually applies",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danuadp/Claude-plugin.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "validate": "node scripts/ci/validate-plugin.js",
+    "test:unit": "node --test tests/*.test.js",
+    "test": "npm run validate && npm run test:unit"
+  },
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "agents",
+    "skills",
+    "hooks"
+  ]
+}

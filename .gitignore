@@ -3,3 +3,12 @@
 
 # Local Claude Code state
 .claude/settings.local.json
+
+# Node
+node_modules/
+coverage/
+
+# Env
+.env
+.env.*
+!.env.example
