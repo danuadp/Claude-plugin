@@ -1,0 +1,28 @@
+{
+  "name": "claude-plugin",
+  "version": "0.1.0",
+  "description": "A starter Claude Code plugin - agents, commands, skills, and hooks with a validator that enforces the manifest rules the CLI actually applies",
+  "author": {
+    "name": "danuadp",
+    "url": "https://github.com/danuadp"
+  },
+  "homepage": "https://github.com/danuadp/Claude-plugin",
+  "repository": "https://github.com/danuadp/Claude-plugin",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "agents",
+    "skills",
+    "commands",
+    "hooks",
+    "scaffold"
+  ],
+  "mcpServers": {},
+  "commands": [
+    "./commands/"
+  ],
+  "skills": [
+    "./skills/"
+  ]
+}
