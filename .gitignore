@@ -1,0 +1,5 @@
+.DS_Store
+*.log
+
+# Local Claude Code state
+.claude/settings.local.json
