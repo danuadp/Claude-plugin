@@ -13,9 +13,16 @@ with something vague like `agents: Invalid input`. The rules below explain why.
 
 ## Required fields
 
-`name`, `version`, and `description` are all required. `version` in particular is
-easy to omit — some published examples leave it out — and a missing `version`
-fails at marketplace install time rather than at authoring time.
+`name` is the only field the CLI strictly requires.
+
+`version` is not required, but omit it and Claude Code falls back to the git
+commit SHA, treating **every commit as a new version**. ECC additionally reports
+marketplace installs failing without it. This repo's validator therefore requires
+`version` and `description` as a project convention, not because the CLI does.
+
+If you are vendoring these notes into another plugin, that distinction matters:
+the rules below about `agents`, `hooks`, and array shapes are CLI behavior; the
+`version` / `description` requirement is ours.
 
 ---
 
@@ -78,7 +85,7 @@ nothing and prevents a surprise if one is added later.
 
 ---
 
-## Agent frontmatter: `tools` is a scalar, not an array
+## Agent frontmatter: tool fields are scalars, not arrays
 
 The array rule above applies to `plugin.json`, **not** to agent markdown
 frontmatter. Agent files use a comma-separated scalar:
@@ -88,12 +95,25 @@ tools: Read, Grep, Glob, Bash    # correct
 tools: [Read, Grep, Glob, Bash]  # wrong shape for agent frontmatter
 ```
 
-Omitting `tools` grants access to every tool. This repo's validator requires the
-field so that each agent's blast radius is explicit and reviewable.
+Bound every agent with either an allowlist (`tools`) or a denylist
+(`disallowedTools`). Declaring neither grants every tool.
+
+Prefer `disallowedTools` when the point is that the agent *cannot* do something —
+a reviewer with `disallowedTools: Write, Edit, NotebookEdit` is structurally
+read-only, which survives someone later adding a tool to the allowlist without
+thinking about it.
 
 ---
 
-## Skill frontmatter: `description` must be an inline scalar
+## Skill frontmatter: `name` is optional, `description` is not
+
+The **directory name is the invocation name**. A `name:` field is optional; if
+you include one that disagrees with the directory, one of the two is a typo.
+
+`description` is the only text the model sees when deciding whether to load the
+skill, so it must say what the skill does *and* when to use it.
+
+### `description` must be an inline scalar
 
 Do not use a YAML block scalar (`|`, `|-`, `|+`, `>`) for `description`. Block
 scalars preserve internal newlines, which breaks any renderer that treats the

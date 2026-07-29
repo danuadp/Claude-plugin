@@ -259,13 +259,24 @@ function validateAgents() {
       error(file, '"description" must be an inline scalar, not a block scalar');
     }
 
-    if (keys.tools === undefined) {
-      error(file, 'frontmatter is missing "tools" - declare an explicit allowlist');
-    } else if (keys.tools.startsWith('[')) {
+    // An agent should bound its own blast radius, via either an allowlist
+    // (`tools`) or a denylist (`disallowedTools`). Declaring neither grants
+    // every tool, which is rarely what a reviewer expects.
+    if (keys.tools === undefined && keys.disallowedTools === undefined) {
       error(
         file,
-        '"tools" must be a comma-separated scalar (Read, Grep, Glob), not a YAML array'
+        'frontmatter declares neither "tools" nor "disallowedTools" - the agent ' +
+          'would get every tool. Bound it explicitly.'
       );
+    }
+
+    for (const field of ['tools', 'disallowedTools']) {
+      if (keys[field] !== undefined && keys[field].startsWith('[')) {
+        error(
+          file,
+          `"${field}" must be a comma-separated scalar (Read, Grep, Glob), not a YAML array`
+        );
+      }
     }
   }
 }
@@ -341,14 +352,15 @@ function validateSkills() {
 
     const keys = frontmatterKeys(fm.lines);
 
-    if (!keys.name) {
-      error(file, 'frontmatter is missing "name"');
-    } else if (keys.name !== name) {
+    // `name` is optional: the directory name is the invocation name. When it is
+    // present and disagrees with the directory, one of the two is a typo.
+    if (keys.name && keys.name !== name) {
       error(file, `frontmatter name "${keys.name}" does not match directory "${name}"`);
     }
 
     if (!keys.description) {
-      error(file, 'frontmatter is missing "description"');
+      error(file, 'frontmatter is missing "description" - it is the only thing the ' +
+        'model sees when deciding whether to load the skill');
     } else if (/^[|>]/.test(keys.description)) {
       error(
         file,

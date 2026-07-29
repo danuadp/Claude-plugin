@@ -60,19 +60,23 @@ that strict gateways enforce.
 
 ## Frontmatter
 
-**Agent** — `tools` is a comma-separated **scalar**, not an array. The
-array rule applies to `plugin.json` only.
+**Agent** — tool fields are comma-separated **scalars**, not arrays. The array
+rule applies to `plugin.json` only.
 
 ```yaml
 ---
 name: code-reviewer
-description: Reviews changed code for correctness and security. Use before committing.
-tools: Read, Grep, Glob, Bash
+description: Reviews a diff for correctness and security. Use before opening a PR.
 model: sonnet
+disallowedTools: Write, Edit, NotebookEdit
 ---
 ```
 
-Omitting `tools` grants every tool. Declare the narrowest set that works.
+Bound every agent with `tools` (allowlist) or `disallowedTools` (denylist) —
+declaring neither grants every tool. Prefer the denylist when the constraint is
+the point: an agent with `disallowedTools: Write, Edit` is structurally
+read-only, and stays that way when someone later widens an allowlist without
+thinking it through.
 
 **Command** — `description` is what shows in the command list; `argument-hint`
 tells the user what to type. `$ARGUMENTS` interpolates their input.
@@ -84,19 +88,22 @@ argument-hint: [path to narrow the review]
 ---
 ```
 
-**Skill** — `description` must be an **inline scalar**. A block scalar (`|`,
-`|-`, `>`) preserves newlines and breaks renderers that key off it.
+**Skill** — the directory name is the invocation name, so `name:` is optional.
+`description` must be an **inline scalar**; a block scalar (`|`, `|-`, `>`)
+preserves newlines and breaks renderers that key off it.
 
 ```yaml
 ---
-name: plugin-authoring
 description: One line stating what it covers and when to use it.
-license: MIT
+disable-model-invocation: true   # optional: makes the skill user-only
 ---
 ```
 
 The description is how the model decides whether to load the skill, so state the
 trigger conditions, not just the topic.
+
+Skills are namespaced by the plugin name — `skills/hello/` is invoked as
+`/my-plugin:hello`, not `/hello`.
 
 ## Hooks
 
@@ -137,6 +144,7 @@ run from its own checkout — the process cwd is the user's project, not yours.
 | `Duplicate hooks file detected` | `hooks/hooks.json` declared in the manifest |
 | Install fails, no clear message | Missing `version`, or a string where an array is required |
 | Skill never loads | `description` is a block scalar, or too vague to match on |
+| Skill not found at `/name` | Skills are namespaced — invoke `/plugin-name:skill-name` |
 | Agent has no tool access | `tools` written as a YAML array instead of a scalar |
 | MCP tools rejected by gateway | Generated tool name over 64 chars — shorten the plugin name or set `"mcpServers": {}` |
 

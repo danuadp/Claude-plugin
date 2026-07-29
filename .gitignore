@@ -1,7 +1,14 @@
-node_modules/
-*.log
 .DS_Store
+*.log
+
+# Local Claude Code state
+.claude/settings.local.json
+
+# Node
+node_modules/
+coverage/
+
+# Env
 .env
 .env.*
 !.env.example
-coverage/

@@ -21,17 +21,19 @@ If the target file already exists, stop and say so. Never overwrite.
 ---
 name: <name>
 description: <one line: what it does and when to use it>
-tools: Read, Grep, Glob
 model: sonnet
+tools: Read, Grep, Glob
 ---
 
 <System prompt. Describe the process the agent follows, its checklist, and its
 output format.>
 ```
 
-`tools` is a **comma-separated scalar**, not a YAML array. Grant the narrowest
-set that does the job — add `Bash`, `Edit`, or `Write` only when the agent
-genuinely needs them.
+Tool fields are **comma-separated scalars**, not YAML arrays. Bound the agent
+with `tools` (allowlist) or `disallowedTools` (denylist) — declaring neither
+grants every tool. For a read-only agent prefer
+`disallowedTools: Write, Edit, NotebookEdit`, which stays read-only even if
+someone later widens an allowlist.
 
 Do **not** add the agent to `plugin.json`. Agents load by convention; an `agents`
 field breaks the manifest. See `.claude-plugin/PLUGIN_SCHEMA_NOTES.md`.
@@ -56,9 +58,7 @@ touch.>
 
 ```markdown
 ---
-name: <name>
 description: <one line, inline scalar - never a block scalar>
-license: MIT
 ---
 
 # <Title>
@@ -70,8 +70,13 @@ license: MIT
 ## <Body>
 ```
 
+The directory name is the invocation name, so `name:` is optional — omit it
+rather than risk it drifting from the directory. The skill will be invoked as
+`/claude-plugin:<name>`.
+
 `description` must be an inline scalar. A block scalar (`|`, `>`) keeps internal
-newlines and breaks the skill picker.
+newlines and breaks the skill picker. Add `disable-model-invocation: true` if the
+skill should be user-invoked only.
 
 ## After writing
 

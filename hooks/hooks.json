@@ -8,7 +8,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${CLAUDE_PLUGIN_ROOT:-.}/scripts/hooks/block-no-verify.js\""
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/block-no-verify.js\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "description": "Flag leftover merge-conflict markers back to Claude",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/check-conflict-markers.sh"
           }
         ]
       }

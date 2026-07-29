@@ -1,7 +1,9 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "claude-plugin",
+  "displayName": "Claude Plugin",
   "version": "0.1.0",
-  "description": "A starter Claude Code plugin - agents, commands, skills, and hooks with a validator that enforces the manifest rules the CLI actually applies",
+  "description": "Starter Claude Code plugin with skills, an agent, commands, and hooks wired up end to end, plus a validator for the manifest rules the CLI enforces.",
   "author": {
     "name": "danuadp",
     "url": "https://github.com/danuadp"
@@ -10,13 +12,13 @@
   "repository": "https://github.com/danuadp/Claude-plugin",
   "license": "MIT",
   "keywords": [
+    "starter",
+    "template",
     "claude-code",
     "plugin",
     "agents",
     "skills",
-    "commands",
-    "hooks",
-    "scaffold"
+    "hooks"
   ],
   "mcpServers": {},
   "commands": [
