@@ -1,0 +1,366 @@
+# Instincts generated from https://github.com/danuadp/Claude-plugin
+# Generated: 2026-07-29T14:28:45.169Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: Claude-plugin-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Commit Length
+
+## Action
+
+Keep commit messages concise (~39 characters)
+
+## Evidence
+
+- Average commit message length: 39 chars
+- Based on 2 commits
+
+---
+id: Claude-plugin-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: Claude-plugin-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: Claude-plugin-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: Claude-plugin-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: Claude-plugin-workflow-merge-parallel-plugin-scaffolds
+trigger: "when doing merge parallel plugin scaffolds"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/danuadp/Claude-plugin
+---
+
+# Claude Plugin Workflow Merge Parallel Plugin Scaffolds
+
+## Action
+
+Follow the merge-parallel-plugin-scaffolds workflow:
+1. Identify overlapping files between scaffolds (e.g., agent definitions, README, plugin.json, hooks).
+2. For each overlap, select the stronger or more complete version, sometimes merging content.
+3. Update documentation (README.md, PLUGIN_SCHEMA_NOTES.md) to reflect merged features and conventions.
+4. Update configuration files (plugin.json, hooks.json, .gitignore) to include all relevant entries from both scaffolds.
+5. Relax or adjust validation rules in scripts/ci/validate-plugin.js as needed to accommodate merged conventions.
+6. Add or update tests to ensure merged functionality passes.
+7. Commit all changes together.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: .claude-plugin/PLUGIN_SCHEMA_NOTES.md, .claude-plugin/plugin.json, .gitignore
+
+---
+id: claude-plugin-instinct-camelcase-files
+trigger: "When creating or renaming a file in the codebase"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Camelcase Files
+
+## Action
+
+Use camelCase for file names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.files
+- No evidence of snake_case or kebab-case files in commonFolders
+
+---
+id: claude-plugin-instinct-camelcase-functions
+trigger: "When defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Camelcase Functions
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: claude-plugin-instinct-pascalcase-classes
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Pascalcase Classes
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: claude-plugin-instinct-screaming-constants
+trigger: "When declaring a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Screaming Constants
+
+## Action
+
+Name the constant in SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: claude-plugin-instinct-relative-imports
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Relative Imports
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: claude-plugin-instinct-named-exports
+trigger: "When exporting functions or classes"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Named Exports
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: claude-plugin-instinct-try-catch-errors
+trigger: "When handling errors in code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Try Catch Errors
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- Pattern in errorHandling.style
+
+---
+id: claude-plugin-instinct-separate-tests
+trigger: "When adding or organizing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Separate Tests
+
+## Action
+
+Place tests in a separate directory from source code
+
+## Evidence
+
+- Pattern in architecture.folderStructure.testLocation
+
+---
+id: claude-plugin-instinct-update-tests-on-merge
+trigger: "When merging parallel plugin scaffolds"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Update Tests On Merge
+
+## Action
+
+Add or update tests to ensure merged functionality passes
+
+## Evidence
+
+- Step in merge-parallel-plugin-scaffolds workflow
+- Example commit sequence includes test updates
+
+---
+id: claude-plugin-instinct-freeform-commits
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Freeform Commits
+
+## Action
+
+Use a short, freeform summary without a strict prefix
+
+## Evidence
+
+- Pattern in commits.type
+- Examples: 'Bootstrap Claude Code plugin scaffold', 'Merge main: combine both plugin scaffolds'
+
+---
+id: claude-plugin-instinct-atomic-commits
+trigger: "When committing changes"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Atomic Commits
+
+## Action
+
+Group related changes (e.g., all merge steps) into a single commit
+
+## Evidence
+
+- Example: 'Commit all changes together' in merge-parallel-plugin-scaffolds workflow
+
+---
+id: claude-plugin-instinct-merge-scaffolds
+trigger: "When two plugin scaffolds or branches need to be combined due to lack of common git history or parallel development"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: danuadp/Claude-plugin
+---
+
+# Claude Plugin Instinct Merge Scaffolds
+
+## Action
+
+Run the merge-parallel-plugin-scaffolds workflow: identify overlaps, select/merge content, update docs/config, relax validation, update tests, and commit together
+
+## Evidence
+
+- merge-parallel-plugin-scaffolds workflow definition
+- Example commit and file list
+
