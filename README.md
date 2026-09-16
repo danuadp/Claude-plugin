@@ -1,8 +1,9 @@
 # claude-plugin
 
 A starter [Claude Code](https://code.claude.com/docs) plugin. It ships one of
-each major component type — a skill, an agent, and a hook — wired up and
-working, so you can see how the pieces fit and then replace them with your own.
+each major component type — a skill, an agent, a hook, and a bundled MCP server
+— wired up and working, so you can see how the pieces fit and then replace them
+with your own.
 
 ## Try it
 
@@ -27,9 +28,41 @@ Plugin skills are always namespaced with the plugin's `name`, which is why it's
 | `.claude-plugin/plugin.json` | Manifest | Name, version, and metadata. `name` is the only required field. |
 | `skills/hello/` | Skill | Minimal `$ARGUMENTS` example. Delete it once you've read it. |
 | `skills/conventional-commit/` | Skill | Writes a Conventional Commits message for staged changes. |
+| `skills/read-document/` | Skill | Reads a PDF, Word, PowerPoint, or Excel file as Markdown. |
+| `.mcp.json` | MCP server | Bundles [markitdown](https://github.com/microsoft/markitdown) as the `markitdown` server. |
+| `scripts/markitdown-mcp.sh` | Launcher | Finds a `markitdown-mcp` to run, or fetches one with `uvx`. |
 | `agents/code-reviewer.md` | Agent | Read-only reviewer subagent, available as `@claude-plugin:code-reviewer`. |
 | `hooks/hooks.json` | Hook | Runs the script below after every `Write` or `Edit`. |
 | `scripts/check-conflict-markers.sh` | Hook script | Flags leftover merge-conflict markers back to Claude. |
+
+### Reading documents
+
+`Read` and `cat` see the raw bytes of a `.pdf` or `.xlsx`, not its text. The
+bundled `markitdown` MCP server converts binary documents to Markdown so Claude
+can actually read them — PDF, Word `.docx`, PowerPoint `.pptx`, Excel
+`.xlsx`/`.xls`, CSV, EPUB, Outlook `.msg`/`.eml`, HTML, `.ipynb`, and ZIP
+archives. Tables survive as Markdown tables; each worksheet gets its own
+heading.
+
+The server exposes one tool, `convert_to_markdown`, which takes a `uri` — an
+absolute `file://` path (percent-encode spaces) or an `http(s)://` URL it
+fetches for you. `skills/read-document/` is what tells Claude to reach for it
+instead of `Read`, and records the limits: legacy `.doc`/`.ppt` are not
+supported, scanned PDFs need OCR first, and page numbers do not survive.
+
+`scripts/markitdown-mcp.sh` resolves the server at startup — `$MARKITDOWN_MCP_BIN`,
+then `markitdown-mcp` on `PATH`, then `python3 -m markitdown_mcp`, then `uvx
+markitdown-mcp`. So it works with nothing installed as long as [uv](https://docs.astral.sh/uv/)
+is present; installing it makes startup faster and removes the network
+dependency:
+
+```bash
+pip install markitdown-mcp      # or: uv tool install markitdown-mcp
+```
+
+Set `MARKITDOWN_ENABLE_PLUGINS=true` in `.mcp.json` to load third-party
+markitdown converter plugins; it is `false` here. Audio transcription
+additionally needs `ffmpeg` on the machine.
 
 ### Skills vs. agents vs. hooks
 
@@ -72,7 +105,6 @@ Everything except `plugin.json` lives at the plugin root, never inside
 | `output-styles/` | Output style definitions. |
 | `monitors/monitors.json` | Background monitors that watch logs or files. |
 | `bin/` | Executables added to the Bash tool's `PATH` while enabled. |
-| `.mcp.json` | Bundled MCP servers. |
 | `.lsp.json` | Language servers for code intelligence. |
 | `settings.json` | Default settings (`agent`, `subagentStatusLine` only). |
 

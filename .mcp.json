@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "markitdown": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/markitdown-mcp.sh",
+      "env": {
+        "MARKITDOWN_ENABLE_PLUGINS": "false"
+      }
+    }
+  }
+}
