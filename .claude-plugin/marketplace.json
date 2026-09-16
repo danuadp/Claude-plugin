@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "danuadp",
+  "description": "Claude Code plugins by danuadp.",
+  "owner": {
+    "name": "danuadp",
+    "url": "https://github.com/danuadp"
+  },
+  "plugins": [
+    {
+      "name": "claude-plugin",
+      "source": "./",
+      "description": "Read PDF, Word, PowerPoint and Excel files as Markdown — including legacy .doc/.ppt and scanned PDFs that need OCR. Also ships a conventional-commit skill, a read-only reviewer agent, and a merge-conflict hook.",
+      "category": "productivity",
+      "keywords": [
+        "documents",
+        "pdf",
+        "docx",
+        "pptx",
+        "xlsx",
+        "ocr",
+        "markitdown"
+      ],
+      "license": "MIT",
+      "repository": "https://github.com/danuadp/Claude-plugin",
+      "homepage": "https://github.com/danuadp/Claude-plugin#readme"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ Plugin skills are always namespaced with the plugin's `name`, which is why it's
 | Path | Component | What it does |
 | :--- | :--- | :--- |
 | `.claude-plugin/plugin.json` | Manifest | Name, version, metadata, and the bundled `markitdown` MCP server. |
+| `.claude-plugin/marketplace.json` | Marketplace | Makes the plugin installable with `/plugin marketplace add danuadp/Claude-plugin`. |
 | `skills/hello/` | Skill | Minimal `$ARGUMENTS` example. Delete it once you've read it. |
 | `skills/conventional-commit/` | Skill | Writes a Conventional Commits message for staged changes. |
 | `skills/read-document/` | Skill | Reads a PDF, Word, PowerPoint, or Excel file as Markdown. |
@@ -155,6 +156,11 @@ MCP servers can live either in an `.mcp.json` at the plugin root or under
 this repo is the working directory — and in that context `${CLAUDE_PLUGIN_ROOT}`
 is undefined, so the server fails to spawn with `ENOENT`.
 
+One cosmetic consequence: `claude plugin details claude-plugin` reports
+`MCP servers (0)`, because it counts `.mcp.json` and does not look at the
+manifest. The server does load — `mcp__plugin_claude-plugin_markitdown__convert_to_markdown`
+is there in a session.
+
 ## Validate
 
 ```bash
@@ -167,16 +173,19 @@ a leftover key from another tool's manifest — into failures.
 
 ## Distribute
 
-To let others install this with `/plugin marketplace add danuadp/Claude-plugin`,
-add `.claude-plugin/marketplace.json`:
+`.claude-plugin/marketplace.json` is already here, so anyone can install this
+with:
 
-```json
-{
-  "name": "danuadp",
-  "owner": { "name": "danuadp" },
-  "plugins": [{ "source": "./", "name": "claude-plugin" }]
-}
 ```
+/plugin marketplace add danuadp/Claude-plugin
+/plugin install claude-plugin@danuadp
+```
+
+The marketplace is named `danuadp` and lists this repository root as its single
+plugin. `strict` defaults to true, so `plugin.json` stays the authority on what
+the plugin actually contains; the marketplace entry only adds listing metadata.
+Bump `version` in `plugin.json` on each release — that is what update detection
+reads.
 
 Full details: [plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
 
