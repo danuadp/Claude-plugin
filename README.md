@@ -25,12 +25,12 @@ Plugin skills are always namespaced with the plugin's `name`, which is why it's
 
 | Path | Component | What it does |
 | :--- | :--- | :--- |
-| `.claude-plugin/plugin.json` | Manifest | Name, version, and metadata. `name` is the only required field. |
+| `.claude-plugin/plugin.json` | Manifest | Name, version, metadata, and the bundled `markitdown` MCP server. |
 | `skills/hello/` | Skill | Minimal `$ARGUMENTS` example. Delete it once you've read it. |
 | `skills/conventional-commit/` | Skill | Writes a Conventional Commits message for staged changes. |
 | `skills/read-document/` | Skill | Reads a PDF, Word, PowerPoint, or Excel file as Markdown. |
-| `.mcp.json` | MCP server | Bundles [markitdown](https://github.com/microsoft/markitdown) as the `markitdown` server. |
 | `scripts/markitdown-mcp.sh` | Launcher | Finds a `markitdown-mcp` to run, or fetches one with `uvx`. |
+| `bin/doc2md` | Executable | Converts legacy `.doc`/`.ppt` and OCRs scanned PDFs, then converts. |
 | `agents/code-reviewer.md` | Agent | Read-only reviewer subagent, available as `@claude-plugin:code-reviewer`. |
 | `hooks/hooks.json` | Hook | Runs the script below after every `Write` or `Edit`. |
 | `scripts/check-conflict-markers.sh` | Hook script | Flags leftover merge-conflict markers back to Claude. |
@@ -46,23 +46,61 @@ heading.
 
 The server exposes one tool, `convert_to_markdown`, which takes a `uri` — an
 absolute `file://` path (percent-encode spaces) or an `http(s)://` URL it
-fetches for you. `skills/read-document/` is what tells Claude to reach for it
-instead of `Read`, and records the limits: legacy `.doc`/`.ppt` are not
-supported, scanned PDFs need OCR first, and page numbers do not survive.
+fetches for you.
 
-`scripts/markitdown-mcp.sh` resolves the server at startup — `$MARKITDOWN_MCP_BIN`,
-then `markitdown-mcp` on `PATH`, then `python3 -m markitdown_mcp`, then `uvx
-markitdown-mcp`. So it works with nothing installed as long as [uv](https://docs.astral.sh/uv/)
-is present; installing it makes startup faster and removes the network
-dependency:
+Two kinds of document defeat it, and `bin/doc2md` covers both. It is on the Bash
+tool's `PATH` while the plugin is enabled, takes plain paths, and writes Markdown
+to stdout:
+
+```bash
+doc2md "Laporan Akhir.doc"               # legacy format: LibreOffice first
+doc2md --ocr force --lang ind scan.pdf   # scanned PDF: OCR, then convert
+```
+
+- **Legacy binary Office formats** — `.doc`, `.ppt`, `.odt`, `.odp`, `.ods`,
+  `.rtf` — make markitdown raise *"the filetype is simply not supported"*.
+  `doc2md` converts them with LibreOffice first.
+- **Scanned PDFs** have no text layer and convert to nothing. `doc2md` notices
+  (under ~50 characters per page), OCRs, and converts again.
+
+Anything else is passed straight through, so `doc2md` is safe as a single entry
+point when the format is unknown.
+
+`skills/read-document/` is what tells Claude to reach for all of this instead of
+`Read`, and records the limits — OCR output needs checking before it is quoted,
+legacy conversion is a lossy round trip, and `.pages`/`.numbers`/`.key` are not
+supported by either route.
+
+#### Dependencies
+
+The MCP server is resolved at startup by `scripts/markitdown-mcp.sh` —
+`$MARKITDOWN_MCP_BIN`, then `markitdown-mcp` on `PATH`, then
+`python3 -m markitdown_mcp`, then `uvx markitdown-mcp`. So it works with nothing
+installed as long as [uv](https://docs.astral.sh/uv/) is present; installing it
+makes startup faster and removes the network dependency:
 
 ```bash
 pip install markitdown-mcp      # or: uv tool install markitdown-mcp
 ```
 
-Set `MARKITDOWN_ENABLE_PLUGINS=true` in `.mcp.json` to load third-party
-markitdown converter plugins; it is `false` here. Audio transcription
-additionally needs `ffmpeg` on the machine.
+`doc2md` degrades one feature at a time — it only needs LibreOffice for legacy
+formats and an OCR tool for scans, and tells you which one is missing:
+
+```bash
+# Debian/Ubuntu. libreoffice-core alone ships no import filters and fails with
+# "source file could not be loaded", so install the document components too.
+apt install libreoffice-writer libreoffice-impress libreoffice-calc \
+            ocrmypdf tesseract-ocr tesseract-ocr-ind poppler-utils
+
+# macOS
+brew install --cask libreoffice && brew install ocrmypdf tesseract-lang poppler
+```
+
+`ocrmypdf` is preferred because it writes the text back into the PDF and keeps
+the layout; if it is missing or broken, `doc2md` falls back to `pdftoppm` +
+`tesseract`, which yields plain text only. Set `MARKITDOWN_ENABLE_PLUGINS=true`
+in the manifest to load third-party markitdown converters; it is `false` here.
+Audio transcription additionally needs `ffmpeg`.
 
 ### Skills vs. agents vs. hooks
 
@@ -104,13 +142,18 @@ Everything except `plugin.json` lives at the plugin root, never inside
 | `workflows/` | Workflow scripts. |
 | `output-styles/` | Output style definitions. |
 | `monitors/monitors.json` | Background monitors that watch logs or files. |
-| `bin/` | Executables added to the Bash tool's `PATH` while enabled. |
 | `.lsp.json` | Language servers for code intelligence. |
 | `settings.json` | Default settings (`agent`, `subagentStatusLine` only). |
 
 Reference any bundled file by absolute path with `${CLAUDE_PLUGIN_ROOT}` — the
 plugin's install directory differs from this repo once someone installs it, and
 it changes again on every update.
+
+MCP servers can live either in an `.mcp.json` at the plugin root or under
+`mcpServers` in `plugin.json`. This plugin uses the manifest, because a root
+`.mcp.json` is *also* what Claude Code reads as project-level MCP config when
+this repo is the working directory — and in that context `${CLAUDE_PLUGIN_ROOT}`
+is undefined, so the server fails to spawn with `ENOENT`.
 
 ## Validate
 

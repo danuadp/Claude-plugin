@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+#
+# doc2md — convert a document to Markdown on stdout, handling the two cases the
+# markitdown MCP server cannot:
+#
+#   * Legacy binary Office files (.doc, .ppt, .xls-era formats, OpenDocument,
+#     .rtf). markitdown does not refuse these — it returns mojibake — so route
+#     them through LibreOffice into the modern format first.
+#   * Scanned PDFs with no text layer, which convert to nothing. Detect the
+#     empty result and add a text layer with OCR, then convert again.
+#
+# Everything else is passed straight to markitdown, so this is safe to use as
+# the single entry point when you are not sure what you are holding.
+#
+# Usage:  doc2md [--ocr auto|force|off] [--lang ind+eng] FILE [FILE...]
+#
+# Markdown goes to stdout; every diagnostic goes to stderr, so the output can be
+# redirected or piped without picking up noise.
+
+set -uo pipefail
+
+OCR_MODE=auto
+OCR_LANG=${DOC2MD_OCR_LANG:-ind+eng}
+# A text PDF runs to well over a thousand characters a page. A scan yields
+# essentially none, so anything under this is treated as "no text layer".
+MIN_CHARS_PER_PAGE=${DOC2MD_MIN_CHARS_PER_PAGE:-50}
+
+note() { printf '%s\n' "$*" >&2; }
+die()  { printf '%s\n' "$*" >&2; exit 1; }
+
+usage() {
+  # The header comment block, minus the shebang and its leading '#'.
+  awk 'NR>2 && /^#/ { sub(/^# ?/, ""); print; next } NR>2 { exit }' "$0"
+  exit "${1:-0}"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --ocr)    OCR_MODE=${2:-}; shift 2 || die "--ocr needs a value" ;;
+    --lang)   OCR_LANG=${2:-}; shift 2 || die "--lang needs a value" ;;
+    -h|--help) usage 0 ;;
+    --)       shift; break ;;
+    -*)       die "Unknown option: $1  (try --help)" ;;
+    *)        break ;;
+  esac
+done
+
+case "$OCR_MODE" in auto|force|off) ;; *) die "--ocr must be auto, force or off" ;; esac
+[ $# -gt 0 ] || usage 1
+
+# --- markitdown, however it happens to be installed -------------------------
+# Mirrors scripts/markitdown-mcp.sh: use what is already there, fetch only as a
+# last resort. Set once, at startup, so a multi-file run does not re-probe.
+if command -v markitdown >/dev/null 2>&1; then
+  MARKITDOWN=(markitdown)
+elif command -v python3 >/dev/null 2>&1 && python3 -c 'import markitdown' >/dev/null 2>&1; then
+  MARKITDOWN=(python3 -m markitdown)
+elif command -v uvx >/dev/null 2>&1; then
+  MARKITDOWN=(uvx --quiet --from markitdown markitdown)
+else
+  die "markitdown is not available. Install it with:  pip install markitdown-mcp"
+fi
+
+markitdown_file() { "${MARKITDOWN[@]}" "$1" 2>/dev/null; }
+
+# Non-whitespace character count — the signal for "did anything come out?".
+text_weight() { tr -d '[:space:]' | wc -c | tr -d ' '; }
+
+page_count() {
+  if command -v pdfinfo >/dev/null 2>&1; then
+    pdfinfo "$1" 2>/dev/null | awk '/^Pages:/ {print $2; exit}'
+  fi
+}
+
+TMPDIR_RUN=$(mktemp -d "${TMPDIR:-/tmp}/doc2md.XXXXXX") || die "Could not create a temp directory."
+trap 'rm -rf "$TMPDIR_RUN"' EXIT
+
+# --- legacy Office -> modern Office, via LibreOffice ------------------------
+convert_with_libreoffice() {
+  local src=$1 target=$2 out
+  command -v soffice >/dev/null 2>&1 || {
+    note "'${src##*/}' is a legacy binary format and needs LibreOffice to be read."
+    note "Install it, including the document components — libreoffice-core alone"
+    note "ships no import filters and fails with 'source file could not be loaded':"
+    note "  apt install libreoffice-writer libreoffice-impress libreoffice-calc"
+    note "  brew install --cask libreoffice"
+    note "Or re-save the file as .docx / .pptx / .xlsx and try again."
+    return 1
+  }
+  # -env:UserInstallation gives this run its own profile, so it does not fight
+  # an interactive LibreOffice the user may already have open.
+  soffice --headless --norestore \
+          "-env:UserInstallation=file://$TMPDIR_RUN/loprofile" \
+          --convert-to "$target" --outdir "$TMPDIR_RUN" "$src" >/dev/null 2>&1
+  out="$TMPDIR_RUN/$(basename "${src%.*}").$target"
+  [ -s "$out" ] || { note "LibreOffice could not convert '${src##*/}' to .$target."; return 1; }
+  printf '%s' "$out"
+}
+
+# --- scanned PDF -> PDF with a text layer -----------------------------------
+ocr_pdf() {
+  local src=$1 force=$2 out="$TMPDIR_RUN/ocr.pdf"
+
+  # Preferred: ocrmypdf writes the text back into the PDF, so markitdown still
+  # sees a PDF and keeps whatever layout it can.
+  if command -v ocrmypdf >/dev/null 2>&1; then
+    local args=(--quiet --language "$OCR_LANG" --optimize 0)
+    # --skip-text keeps pages that already have text; --force-ocr rasterises
+    # everything, which is what you want when the existing layer is garbage.
+    if [ "$force" = force ]; then args+=(--force-ocr); else args+=(--skip-text); fi
+    if ocrmypdf "${args[@]}" "$src" "$out" >"$TMPDIR_RUN/ocrmypdf.log" 2>&1 && [ -s "$out" ]; then
+      printf '%s' "$out"; return 0
+    fi
+    note "[$src] ocrmypdf failed; last line was:"
+    note "       $(tail -n 1 "$TMPDIR_RUN/ocrmypdf.log" 2>/dev/null)"
+    note "       Trying the rasterise-and-OCR fallback instead."
+  fi
+
+  # Fallback: rasterise with poppler and OCR page by page. Plain text only —
+  # tables and columns do not survive — but it needs no ocrmypdf.
+  if command -v pdftoppm >/dev/null 2>&1 && command -v tesseract >/dev/null 2>&1; then
+    pdftoppm -r 300 -png "$src" "$TMPDIR_RUN/page" >/dev/null 2>&1 || {
+      note "[$src] pdftoppm could not rasterise the PDF."; return 1; }
+    local txt="$TMPDIR_RUN/ocr.txt" page n=0
+    : > "$txt"
+    for page in "$TMPDIR_RUN"/page-*.png; do
+      [ -e "$page" ] || continue
+      n=$((n + 1))
+      printf '\n<!-- page %d -->\n\n' "$n" >> "$txt"
+      tesseract "$page" - -l "$OCR_LANG" 2>/dev/null >> "$txt"
+    done
+    [ -s "$txt" ] && { printf '%s' "$txt"; return 0; }
+    note "[$src] tesseract read nothing from the rasterised pages."
+    return 1
+  fi
+
+  note "[$src] No working OCR tool found. Install one, then re-run:"
+  note "       apt install ocrmypdf tesseract-ocr tesseract-ocr-ind   # Debian/Ubuntu"
+  note "       brew install ocrmypdf tesseract-lang                   # macOS"
+  return 1
+}
+
+convert_one() {
+  local src=$1 ext lower target converted md weight pages threshold ocred
+  [ -f "$src" ] || { note "Not a file: $src"; return 1; }
+  ext=${src##*.}
+  lower=$(printf '%s' "$ext" | tr '[:upper:]' '[:lower:]')
+
+  case "$lower" in
+    doc|odt|rtf|wpd) target=docx ;;
+    ppt|odp)         target=pptx ;;
+    xlsm|ods)        target=xlsx ;;
+    *)               target= ;;
+  esac
+
+  if [ -n "$target" ]; then
+    note "[$src] legacy format .$lower — converting to .$target with LibreOffice first."
+    converted=$(convert_with_libreoffice "$src" "$target") || return 1
+    markitdown_file "$converted"
+    return $?
+  fi
+
+  md=$(markitdown_file "$src")
+  weight=$(printf '%s' "$md" | text_weight)
+
+  if [ "$lower" = pdf ] && [ "$OCR_MODE" != off ]; then
+    pages=$(page_count "$src"); pages=${pages:-1}
+    threshold=$(( pages * MIN_CHARS_PER_PAGE ))
+    if [ "$OCR_MODE" = force ] || [ "$weight" -lt "$threshold" ]; then
+      if [ "$OCR_MODE" = force ]; then
+        note "[$src] --ocr force: re-running OCR over all $pages page(s)."
+      else
+        note "[$src] only $weight characters over $pages page(s) — looks scanned, running OCR (lang: $OCR_LANG)."
+      fi
+      if ocred=$(ocr_pdf "$src" "$OCR_MODE"); then
+        md=$(markitdown_file "$ocred")
+        weight=$(printf '%s' "$md" | text_weight)
+        note "[$src] OCR produced $weight characters."
+      fi
+    fi
+  fi
+
+  if [ "$weight" -eq 0 ]; then
+    note "[$src] conversion produced no text. The file may be an unsupported format,"
+    note "       an image-only document OCR could not read, or empty."
+    return 1
+  fi
+  printf '%s\n' "$md"
+}
+
+status=0
+multi=0
+[ $# -gt 1 ] && multi=1
+for f in "$@"; do
+  [ "$multi" -eq 1 ] && printf '\n<!-- %s -->\n\n' "$f"
+  convert_one "$f" || status=1
+done
+exit "$status"
